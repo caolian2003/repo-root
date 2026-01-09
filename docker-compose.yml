@@ -1,0 +1,15 @@
+# version : 빼도 상관x
+version: '3.9'
+services:
+  db:
+    image: mysql:8.0
+    container_name: db
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: myapp
+    ports:
+      - "3308:3306"
+    volumes:
+      - dbdata:/var/lib/mysql
+volumes:
+  dbdata:

@@ -1,0 +1,58 @@
+# local 환경에서 사용할 docker-compose 설정파일
+version: '3.9'
+services:
+  db:
+    image: mysql:8.0
+    container_name: db
+    #사용할 .env 파일 지정
+    env_file:
+      - .env.local.db
+    environment:
+      # .env.local.db를 지정하였으므로 환경변수 값을 자동으로 인식하여 만들어줌. 따라서 환경변수를 따로 명시할 필요가 없음.
+      # MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: myapp
+    ports:
+      - "3308:3306"   # 호스트 3308 → 컨테이너 3306
+    volumes:
+      - dbdata:/var/lib/mysql
+    healthcheck:
+      # MySQL 클라이언트 유틸리티인 mysqladmin 을 이용해서 
+      # DB가 살아있는지 확인. ( health Check )
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      # test 명령을 실행했을 때 5초 안에 응답이 없으면 실패로 간주
+      timeout: 5s
+      retries: 10
+
+  backend:
+    # ../backend 경로에 있는 Dockerfile로 이미지 빌드
+    build: ../backend
+    container_name: backend
+    env_file:
+      - .env.local.back
+    environment:
+      # yaml 파일 설정.
+      SPRING_PROFILES_ACTIVE: local
+      # 컨테이너 간 접속 → DB 호스트는 localhost가 아니라 'db' || backend 서버의 yaml에 적은 URL 설정보다 docker-compose 설정의 URL이 더 우선시됨.
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/myapp?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=utf8
+      SPRING_DATASOURCE_USERNAME: root
+    ports:
+      - "8080:8080"
+      # DB health Check 후 OK 면 backend build.
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ../frontend
+    container_name: frontend
+    environment: {}
+    ports:
+    # 로컬 PC에서는 http://localhost, 내부 컨테이너는 80번 포트
+      - "80:80"  # Nginx로 서빙(개발 시 Vite dev 서버를 쓰고 싶으면 로컬 npm run dev 권장)
+    # backend Server가 실행된 이후에 하라는 의미   
+    depends_on:
+      - backend
+
+volumes:
+  dbdata:
