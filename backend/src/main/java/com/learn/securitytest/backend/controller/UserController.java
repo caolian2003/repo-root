@@ -15,7 +15,7 @@ public class UserController {
     private final
  UserService service;
 
-    @GetMapping("/search")
+    @GetMapping
     public List<User> list() {
         return service.findAll();
     }
